@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>الجهاز 1 — الاستقبال الخارجي  </title>
+
+  <!-- Firebase v8 (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <!-- SheetJS pour lire Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- Google Fonts — Arabic support -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg:       #f4f2ec;
+      --surface:  #ffffff;
+      --card:     #fafaf7;
+      --border:   #e4e0d6;
+      --accent:   #c8a96e;
+      --accent2:  #c8a96e;
+      --text:     #1a1a2e;
+      --muted:    #8a8578;
+      --success:  #2d7a4f;
+      --radius:   10px;
+      --font-main: 'Cairo', sans-serif;
+      --header: #1a2744
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      padding-bottom: 60px;
+      direction: rtl;
+    }
+
+    header {
+      background: var(--header);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-seal {
+      width: 46px; height: 46px;
+      background: var(--accent2);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .header-title { font-family: var(--font-main);color:#fff; font-size: 1.2rem; font-weight: 700; }
+    .header-sub   { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .header-badge {
+      margin-right: auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .header-badge span { color: var(--accent); font-weight: 700; font-size: 1rem; }
+
+    main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
+
+    .section-label {
+      font-family: var(--font-main);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .import-zone {
+      background: var(--surface);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 32px;
+      transition: border-color 0.2s;
+    }
+    .import-zone:hover { border-color: var(--accent); }
+    .import-icon { font-size: 2rem; }
+    .import-text h3 { font-family: var(--font-main); font-weight: 700; margin-bottom: 4px; }
+    .import-text p  { font-size: 0.82rem; color: var(--muted); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-main);
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: all 0.18s;
+    }
+    .btn-accent { background: var(--accent); color: #111; }
+    .btn-accent:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+    #fileInput { display: none; }
+
+    .search-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .search-wrap { flex: 1; position: relative; }
+    .search-wrap input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 40px 10px 14px;
+      color: var(--text);
+      font-family: var(--font-main);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+      text-align: right;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap::before {
+      content: '🔍';
+      position: absolute;
+      right: 12px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.85rem;
+      pointer-events: none;
+    }
+    .count-badge {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .count-badge b { color: var(--accent); }
+
+    #guestList { display: flex; flex-direction: column; gap: 12px; }
+
+    .guest-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      transition: border-color 0.2s, transform 0.15s;
+      animation: fadeSlideIn 0.3s ease both;
+    }
+    .guest-card:hover {
+      border-color: var(--accent);
+      transform: translateX(-3px);
+    }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .guest-info .name {
+      font-family: var(--font-main);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .nom-part {
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text);
+    }
+    .prenom-part {
+      font-weight: 400;
+      font-size: 0.92rem;
+      color: var(--text);
+      font-family: var(--font-main);
+    }
+
+    .guest-info .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tag {
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .tag.poste  { border-color: #3a4870; color: #8899cc; }
+    .tag.region { border-color: #2a4040; color: #66aaaa; }
+
+    .guest-action { display: flex; align-items: center; gap: 8px; }
+
+    .chaise-input {
+      width: 90px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 6px;
+      color: var(--text);
+      font-family: var(--font-main);
+      font-size: 0.9rem;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .chaise-input:focus { border-color: var(--accent); }
+    .chaise-input::placeholder { color: var(--muted); font-size: 0.78rem; }
+    .chaise-input.erreur { border-color: var(--accent2); box-shadow: 0 0 0 2px rgba(232,86,58,0.25); }
+
+    .btn-validate {
+      background: var(--accent);
+      color: #111;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 16px;
+      cursor: pointer;
+      font-family: var(--font-main);
+      font-weight: 700;
+      font-size: 0.85rem;
+      transition: all 0.18s;
+      white-space: nowrap;
+    }
+    .btn-validate:hover { filter: brightness(1.1); transform: scale(1.03); }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.9rem; }
+
+    .toast {
+      position: fixed;
+      bottom: 24px; left: 24px;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 9999;
+      max-width: 340px;
+      text-align: right;
+      font-family: var(--font-main);
+    }
+    .toast.show  { transform: translateY(0); opacity: 1; }
+    .toast.ok    { background: var(--success); }
+    .toast.warn  { background: #c0392b; }
+
+    .status-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 10px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      direction: rtl;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+    .status-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 600px) {
+      .guest-card { grid-template-columns: 1fr; }
+      .guest-action { justify-content: flex-start; }
+      .import-zone { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-seal">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/0/0f/Logo_de_la_DGAPR.svg"
+       alt="DGAPR"
+       style="width:200%; height:200%; object-fit:contain;">
+</div> 
+  <div>
+    <div class="header-title">التحكم في الوصول</div>
+    <div class="header-sub">المندوبية العامة لإدارة السجون وإعادة الإدماج</div>
+  </div>
+  <div class="header-badge">
+    في الانتظار : <span id="headerCount">0</span>
+  </div>
+</header>
+
+<main>
+
+  <div class="section-label">📂 استيراد قائمة الضيوف</div>
+  <div class="import-zone">
+    <div class="import-icon">📊</div>
+    <div class="import-text">
+      <h3>ملف Excel ‏(.xlsx)</h3>
+      <p>الأعمدة المطلوبة : nom، prenom، region، poste</p>
+    </div>
+    <div style="margin-right:auto; display:flex; gap:10px; align-items:center;">
+      <div class="spinner" id="importSpinner"></div>
+      <button class="btn btn-accent" onclick="document.getElementById('fileInput').click()">
+        ⬆️ اختيار ملف
+      </button>
+    </div>
+  </div>
+  <input type="file" id="fileInput" accept=".xlsx, .xls" onchange="handleFileUpload(event)" />
+
+  <div class="search-row">
+    <div class="search-wrap">
+      <input type="text" id="searchInput" placeholder="البحث بالاسم أو اللقب…" oninput="renderList()" />
+    </div>
+    <div class="count-badge">في الانتظار : <b id="countDisplay">0</b></div>
+  </div>
+
+  <div class="section-label">👥 قائمة الضيوف — في الانتظار</div>
+  <div id="guestList">
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <p>استورد ملف Excel لعرض قائمة الضيوف</p>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<div class="status-bar">
+  <div class="status-dot" id="statusDot"></div>
+  <span id="statusText">جارٍ الاتصال بـ Firebase…</span>
+</div>
+
+
+<script>
+  /* ════════════════════════════════════════════════
+   * 🔧 CONFIGURATION FIREBASE
+   * ════════════════════════════════════════════════ */
+  const firebaseConfig = {
+    apiKey:            "AIzaSyAVals_I1AF1QHPeuLz0NxMNqCTGG1i9IY",
+    authDomain:        "prison-2ce4a.firebaseapp.com",
+    databaseURL:       "https://prison-2ce4a-default-rtdb.firebaseio.com",
+    projectId:         "prison-2ce4a",
+    storageBucket:     "prison-2ce4a.firebasestorage.app",
+    messagingSenderId: "571638333546",
+    appId:             "1:571638333546:web:c2ef979ece08f43358ca13"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const invitesRef = db.ref('invites');
+
+  let tousLesInvites = {};
+  let invitesLocaux  = {};
+
+  /* ════════════════════════════════════════════════
+   * 🔴 Écoute Firebase en temps réel
+   * ════════════════════════════════════════════════ */
+  invitesRef.on('value', (snapshot) => {
+    tousLesInvites = {};
+    invitesLocaux  = {};
+
+    snapshot.forEach((child) => {
+      const data = child.val();
+      tousLesInvites[child.key] = data;
+      if (data.statut === 'EN_ATTENTE') {
+        invitesLocaux[child.key] = data;
+      }
+    });
+
+    renderList();
+    updateStatusConnected();
+  }, (error) => {
+    console.error('Firebase error:', error);
+    updateStatusError();
+  });
+
+  /* ════════════════════════════════════════════════
+   * 📊 IMPORT EXCEL via SheetJS
+   * ════════════════════════════════════════════════ */
+  function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const spinner = document.getElementById('importSpinner');
+    spinner.style.display = 'block';
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data     = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet    = workbook.Sheets[workbook.SheetNames[0]];
+        const rows     = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+        if (rows.length === 0) {
+          alert('⚠️ ملف Excel فارغ.');
+          spinner.style.display = 'none';
+          return;
+        }
+
+        const required = ['nom', 'prenom', 'region', 'poste'];
+        const keys     = Object.keys(rows[0]).map(k => k.toLowerCase().trim());
+        const missing  = required.filter(r => !keys.includes(r));
+        if (missing.length > 0) {
+          alert(`⚠️ أعمدة مفقودة في الملف : ${missing.join(', ')}`);
+          spinner.style.display = 'none';
+          return;
+        }
+
+        if (!confirm(`📋 تم العثور على ${rows.length} ضيف/ضيوف.\nهل تريد الاستيراد وحذف البيانات الحالية؟`)) {
+          spinner.style.display = 'none';
+          return;
+        }
+
+        invitesRef.remove().then(() => {
+          const updates = {};
+          rows.forEach((row, i) => {
+            const id = 'invite_' + Date.now() + '_' + i;
+            updates[id] = {
+              nom:    (row['nom']    || row['Nom']    || '').toString().trim(),
+              prenom: (row['prenom'] || row['Prenom'] || row['Prénom'] || '').toString().trim(),
+              region: (row['region'] || row['Region'] || row['Région'] || '').toString().trim(),
+              poste:  (row['poste']  || row['Poste']  || '').toString().trim(),
+              chaise: null,
+              statut: 'EN_ATTENTE'
+            };
+          });
+          return invitesRef.update(updates);
+        }).then(() => {
+          spinner.style.display = 'none';
+          showToast(`✅ تم استيراد ${rows.length} ضيف/ضيوف بنجاح !`, 'ok');
+        }).catch((err) => {
+          spinner.style.display = 'none';
+          alert('❌ خطأ في Firebase : ' + err.message);
+        });
+
+      } catch (err) {
+        spinner.style.display = 'none';
+        alert('❌ خطأ في قراءة ملف Excel : ' + err.message);
+      }
+      event.target.value = '';
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  /* ════════════════════════════════════════════════
+   * 🎨 RENDU DE LA LISTE
+   * ════════════════════════════════════════════════ */
+  function renderList() {
+    const container   = document.getElementById('guestList');
+    const search      = document.getElementById('searchInput').value.toLowerCase().trim();
+    const countEl     = document.getElementById('countDisplay');
+    const headerCount = document.getElementById('headerCount');
+
+    const filtered = Object.entries(invitesLocaux).filter(([id, g]) => {
+      if (!search) return true;
+      return (
+        g.nom.toLowerCase().includes(search)    ||
+        g.prenom.toLowerCase().includes(search) ||
+        g.region.toLowerCase().includes(search) ||
+        g.poste.toLowerCase().includes(search)
+      );
+    });
+
+    countEl.textContent     = filtered.length;
+    headerCount.textContent = Object.keys(invitesLocaux).length;
+    container.innerHTML     = '';
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">${search ? '🔍' : '🎉'}</div>
+          <p>${search
+            ? 'لا توجد نتائج لـ "' + escapeHtml(search) + '"'
+            : 'تم التحقق من جميع الضيوف !'
+          }</p>
+        </div>`;
+      return;
+    }
+
+    filtered.sort(([, a], [, b]) => a.nom.localeCompare(b.nom));
+
+    filtered.forEach(([id, guest], index) => {
+      const card = document.createElement('div');
+      card.className = 'guest-card';
+      card.style.animationDelay = (index * 0.04) + 's';
+
+      card.innerHTML = `
+        <div class="guest-info">
+          <div class="name">
+            <span class="nom-part">${escapeHtml(guest.nom.toUpperCase())}</span>
+            <span class="prenom-part">${escapeHtml(guest.prenom)}</span>
+          </div>
+          <div class="meta">
+            <span class="tag poste">💼 ${escapeHtml(guest.poste)}</span>
+            <span class="tag region">📍 ${escapeHtml(guest.region)}</span>
+          </div>
+        </div>
+        <div class="guest-action">
+          <input
+            class="chaise-input"
+            type="number"
+            id="chaise_${id}"
+            placeholder="رقم المقعد"
+            min="1"
+            title="رقم المقعد"
+          />
+          <button class="btn-validate" onclick="validerInvite('${id}')">
+            ✅ تأكيد
+          </button>
+        </div>`;
+
+      container.appendChild(card);
+    });
+  }
+
+  /* ════════════════════════════════════════════════
+   * ✅ VALIDER UN INVITÉ
+   * ════════════════════════════════════════════════ */
+  function validerInvite(id) {
+    const input  = document.getElementById('chaise_' + id);
+    const valeur = input ? input.value.trim() : '';
+
+    if (input) input.classList.remove('erreur');
+
+    if (!valeur || isNaN(valeur) || parseInt(valeur) <= 0) {
+      alert('⚠️ يرجى إدخال رقم مقعد صحيح (عدد صحيح موجب).');
+      if (input) { input.focus(); input.classList.add('erreur'); }
+      return;
+    }
+
+    const chaise = parseInt(valeur);
+
+    if (!invitesLocaux[id]) {
+      alert('⚠️ هذا الضيف لم يعد موجودًا في قاعدة البيانات.');
+      return;
+    }
+
+    const doublon = Object.entries(tousLesInvites).find(([otherId, other]) => {
+      return otherId !== id && other.chaise === chaise;
+    });
+
+    if (doublon) {
+      const [, autre] = doublon;
+      showToast(
+        `🚫 المقعد رقم ${chaise} مخصص بالفعل لـ ${autre.nom.toUpperCase()} ${autre.prenom}`,
+        'warn'
+      );
+      if (input) {
+        input.classList.add('erreur');
+        input.focus();
+        input.select();
+      }
+      return;
+    }
+
+    const guest = invitesLocaux[id];
+
+    invitesRef.child(id).update({
+      chaise: chaise,
+      statut: 'ENTRE'
+    }).then(() => {
+      showToast(
+        `✅ ${guest.nom.toUpperCase()} ${guest.prenom} — تم تسجيل المقعد رقم ${chaise}`,
+        'ok'
+      );
+    }).catch((err) => {
+      alert('❌ خطأ أثناء التأكيد : ' + err.message);
+    });
+  }
+
+  /* ════════════════════════════════════════════════
+   * 🔧 UTILITAIRES
+   * ════════════════════════════════════════════════ */
+  function showToast(message, type = 'ok') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className   = `toast ${type} show`;
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => { toast.className = `toast ${type}`; }, 4000);
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function updateStatusConnected() {
+    document.getElementById('statusDot').className    = 'status-dot connected';
+    document.getElementById('statusText').textContent = 'متصل بـ Firebase — البيانات في الوقت الفعلي';
+  }
+  function updateStatusError() {
+    document.getElementById('statusDot').className    = 'status-dot';
+    document.getElementById('statusText').textContent = 'خطأ في الاتصال بـ Firebase';
+  }
+
+  // الضغط على Enter في حقل المقعد = تأكيد
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.classList.contains('chaise-input')) {
+      const id = e.target.id.replace('chaise_', '');
+      validerInvite(id);
+    }
+  });
+</script>
+
+</body>
+</html>
